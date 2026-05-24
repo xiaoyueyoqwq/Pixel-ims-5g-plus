@@ -2,7 +2,6 @@ package io.github.vvb2060.ims;
 
 import static io.github.vvb2060.ims.PrivilegedProcess.TAG;
 
-import android.annotation.NonNull;
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.IActivityManager;
@@ -40,13 +39,10 @@ public class ShizukuProvider extends rikka.shizuku.ShizukuProvider {
     private boolean skip = false;
 
     @Override
-    public Bundle call(@NonNull String method, String arg, Bundle extras) {
-        if (UserHandle.myUserId() != UserHandle.USER_SYSTEM) {
-            return new Bundle();
-        }
-        var sdkUid = Process.toSdkSandboxUid(Os.getuid());
+    public Bundle call(String method, String arg, Bundle extras) {
+        var sdkUid = resolveSdkSandboxUid();
         var callingUid = Binder.getCallingUid();
-        if (callingUid != sdkUid && callingUid != Process.SHELL_UID
+        if (sdkUid != null && callingUid != sdkUid && callingUid != Process.SHELL_UID
                 && callingUid != Process.ROOT_UID) {
             return new Bundle();
         }
@@ -60,7 +56,8 @@ public class ShizukuProvider extends rikka.shizuku.ShizukuProvider {
                     if (needOverride(context)) startInstrument(context, canPersistent(context));
                 }
             });
-        } else if (METHOD_GET_BINDER.equals(method) && callingUid == sdkUid && extras != null) {
+        } else if (METHOD_GET_BINDER.equals(method) && sdkUid != null
+                && callingUid == sdkUid && extras != null) {
             skip = true;
             Shizuku.addBinderReceivedListener(() -> {
                 var binder = extras.getBinder("binder");
@@ -91,11 +88,11 @@ public class ShizukuProvider extends rikka.shizuku.ShizukuProvider {
             var binder = ServiceManager.getService(Context.ACTIVITY_SERVICE);
             var am = IActivityManager.Stub.asInterface(new ShizukuBinderWrapper(binder));
             var name = new ComponentName(context, PrivilegedProcess.class);
-            var flags = ActivityManager.INSTR_FLAG_DISABLE_HIDDEN_API_CHECKS;
+            var flags = 1;
             if (sdkSandbox) {
-                flags |= ActivityManager.INSTR_FLAG_INSTRUMENT_SDK_SANDBOX;
+                flags |= 32;
             } else {
-                flags |= ActivityManager.INSTR_FLAG_NO_RESTART;
+                flags |= 8;
             }
             var args = new Bundle();
             args.putInt("pid", Process.myPid());
@@ -156,12 +153,28 @@ public class ShizukuProvider extends rikka.shizuku.ShizukuProvider {
         var binder = ServiceManager.getService(Context.TELEPHONY_SERVICE);
         var phone = ITelephony.Stub.asInterface(new ShizukuBinderWrapper(binder));
         try {
-            var value = phone.getImsProvisioningInt(subId, ProvisioningManager.KEY_VOIMS_OPT_IN_STATUS);
-            if (value == ProvisioningManager.PROVISIONING_VALUE_ENABLED) return;
-            phone.setImsProvisioningInt(subId, ProvisioningManager.KEY_VOIMS_OPT_IN_STATUS,
-                    ProvisioningManager.PROVISIONING_VALUE_ENABLED);
-        } catch (RemoteException e) {
+            var key = ProvisioningManager.class.getDeclaredField("KEY_VOIMS_OPT_IN_STATUS")
+                    .getInt(null);
+            var enabled = ProvisioningManager.class
+                    .getDeclaredField("PROVISIONING_VALUE_ENABLED").getInt(null);
+            var value = phone.getImsProvisioningInt(subId, key);
+            if (value == enabled) return;
+            phone.setImsProvisioningInt(subId, key, enabled);
+        } catch (ReflectiveOperationException e) {
             Log.w(TAG, Log.getStackTraceString(e));
+        } catch (Exception e) {
+            Log.w(TAG, Log.getStackTraceString(e));
+        }
+    }
+
+    private static Integer resolveSdkSandboxUid() {
+        try {
+            return (Integer) Process.class
+                    .getMethod("toSdkSandboxUid", int.class)
+                    .invoke(null, Os.getuid());
+        } catch (Exception e) {
+            Log.w(TAG, Log.getStackTraceString(e));
+            return null;
         }
     }
 }

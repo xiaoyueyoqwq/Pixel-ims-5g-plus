@@ -2,7 +2,6 @@ package io.github.vvb2060.ims;
 
 import static rikka.shizuku.ShizukuProvider.METHOD_GET_BINDER;
 
-import android.annotation.NonNull;
 import android.annotation.SuppressLint;
 import android.app.IActivityManager;
 import android.app.Instrumentation;
@@ -16,7 +15,6 @@ import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.permission.PermissionManager;
 import android.system.Os;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -26,6 +24,20 @@ import rikka.shizuku.ShizukuBinderWrapper;
 
 public class PrivilegedProcess extends Instrumentation {
     static final String TAG = "vvb";
+    private static final String KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ =
+            "nr_advanced_threshold_bandwidth_khz_int";
+    private static final String KEY_ADDITIONAL_NR_ADVANCED_BANDS =
+            "additional_nr_advanced_bands_int_array";
+    private static final String KEY_5G_ICON_CONFIGURATION = "5g_icon_configuration_string";
+    private static final String KEY_NR_ADVANCED_CAPABLE_PCO_ID =
+            "nr_advanced_capable_pco_id_int";
+    private static final String KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH =
+            "include_lte_for_nr_advanced_threshold_bandwidth_bool";
+    private static final int NR_ADVANCED_THRESHOLD_KHZ_FOR_5GA = 110_000;
+    private static final int[] NR_ADVANCED_BANDS_FOR_CHINA = new int[]{1, 3, 8, 28, 41, 78, 79};
+    private static final String NR_ICON_CONFIGURATION_5GA =
+            "connected_mmwave:5G_Plus,connected:5G,connected_rrc_idle:5G,"
+                    + "not_restricted_rrc_idle:5G,not_restricted_rrc_con:5G";
 
     @Override
     public void onCreate(Bundle arguments) {
@@ -39,7 +51,6 @@ public class PrivilegedProcess extends Instrumentation {
             var am = IActivityManager.Stub.asInterface(new ShizukuBinderWrapper(binder));
             try {
                 am.startDelegateShellPermissionIdentity(Os.getuid(), null);
-                grantPermission(context);
                 overrideConfig(context, false);
                 am.stopDelegateShellPermissionIdentity();
             } catch (RemoteException e) {
@@ -54,10 +65,9 @@ public class PrivilegedProcess extends Instrumentation {
     private Bundle makeExtras(Context context) {
         var binder = new Binder() {
             @Override
-            protected boolean onTransact(int code, @NonNull Parcel data, Parcel reply, int flags) throws RemoteException {
+            protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
                 if (code == 1) {
                     try {
-                        grantPermission(context);
                         overrideConfig(context, true);
                     } catch (Exception e) {
                         Log.e(TAG, Log.getStackTraceString(e));
@@ -75,26 +85,25 @@ public class PrivilegedProcess extends Instrumentation {
     }
 
     @SuppressLint("MissingPermission")
-    private static void grantPermission(Context context) {
-        var pm = context.getSystemService(PermissionManager.class);
-        pm.grantRuntimePermission(BuildConfig.APPLICATION_ID,
-                android.Manifest.permission.READ_PHONE_STATE, Process.myUserHandle());
-    }
-
-    @SuppressLint("MissingPermission")
     private static void overrideConfig(Context context, boolean persistent) {
         var cm = context.getSystemService(CarrierConfigManager.class);
         var sm = context.getSystemService(SubscriptionManager.class);
         var values = getConfig();
-        for (var subId : sm.getActiveSubscriptionIdList()) {
+        int[] subIds;
+        try {
+            subIds = (int[]) sm.getClass().getMethod("getActiveSubscriptionIdList").invoke(sm);
+        } catch (Exception e) {
+            throw new IllegalStateException("failed to get active subscription ids", e);
+        }
+        for (var subId : subIds) {
             values.putInt("vvb2060_config_version", BuildConfig.VERSION_CODE);
             try {
-                cm.overrideConfig(subId, values, persistent);
+                invokeOverrideConfig(cm, subId, values, persistent);
             } catch (SecurityException e) {
                 Log.w(TAG, "overrideConfig failed for subId " + subId, e);
                 if (persistent) {
                     persistent = false;
-                    cm.overrideConfig(subId, values, persistent);
+                    invokeOverrideConfig(cm, subId, values, persistent);
                 }
             }
             var bundle = cm.getConfigForSubId(subId, "vvb2060_config_version");
@@ -103,6 +112,27 @@ public class PrivilegedProcess extends Instrumentation {
             } else {
                 Log.e(TAG, "overrideConfig failed for subId " + subId + ", persistent=" + persistent);
             }
+        }
+    }
+
+    private static void invokeOverrideConfig(CarrierConfigManager cm, int subId,
+                                             PersistableBundle values, boolean persistent) {
+        try {
+            cm.getClass().getMethod("overrideConfig", int.class, PersistableBundle.class,
+                    boolean.class).invoke(cm, subId, values, persistent);
+        } catch (NoSuchMethodException e) {
+            try {
+                cm.getClass().getMethod("overrideConfig", int.class, PersistableBundle.class)
+                        .invoke(cm, subId, values);
+            } catch (ReflectiveOperationException inner) {
+                throw new IllegalStateException("overrideConfig invocation failed", inner);
+            }
+        } catch (ReflectiveOperationException e) {
+            var cause = e.getCause();
+            if (cause instanceof SecurityException securityException) {
+                throw securityException;
+            }
+            throw new IllegalStateException("overrideConfig invocation failed", e);
         }
     }
 
@@ -122,8 +152,8 @@ public class PrivilegedProcess extends Instrumentation {
         bundle.putBoolean(CarrierConfigManager.KEY_CARRIER_WFC_SUPPORTS_WIFI_ONLY_BOOL, true);
         bundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL, true);
         bundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_WFC_ROAMING_MODE_BOOL, true);
-        bundle.putBoolean(CarrierConfigManager.KEY_SHOW_WIFI_CALLING_ICON_IN_STATUS_BAR_BOOL, true);
-        bundle.putInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT, 6);
+        bundle.putBoolean("show_wifi_calling_icon_in_status_bar_bool", true);
+        bundle.putInt("wfc_spn_format_idx_int", 6);
 
         bundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL, true);
         bundle.putBoolean(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL, false);
@@ -134,6 +164,11 @@ public class PrivilegedProcess extends Instrumentation {
         bundle.putIntArray(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY,
                 new int[]{CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA,
                         CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA});
+        bundle.putInt(KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ, NR_ADVANCED_THRESHOLD_KHZ_FOR_5GA);
+        bundle.putBoolean(KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH, false);
+        bundle.putIntArray(KEY_ADDITIONAL_NR_ADVANCED_BANDS, NR_ADVANCED_BANDS_FOR_CHINA);
+        bundle.putString(KEY_5G_ICON_CONFIGURATION, NR_ICON_CONFIGURATION_5GA);
+        bundle.putInt(KEY_NR_ADVANCED_CAPABLE_PCO_ID, 0);
         bundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
                 // Boundaries: [-140 dBm, -44 dBm]
                 new int[]{

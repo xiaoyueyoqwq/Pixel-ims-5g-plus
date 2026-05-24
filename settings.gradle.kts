@@ -54,3 +54,4 @@ enableFeaturePreview("STABLE_CONFIGURATION_CACHE")
 
 rootProject.name = "Ims"
 include(":app")
+include(":stub")
