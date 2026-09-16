@@ -8,6 +8,10 @@ Adds the **5G+ / NR_ADVANCED** icon and IMS-related carrier switches on Pixel ph
 
 If 5G+ is already in effect, turning Wireless debugging on does not prompt again. Falling back to LTE indoors also does not.
 
+## Download
+
+The signed APK is on [Releases](https://github.com/xiaoyueyoqwq/Pixel-ims-5g-plus/releases). Each push to `master` updates the Release for the current `versionName`.
+
 ## Usage
 
 1. Install the APK, then **reboot once**.

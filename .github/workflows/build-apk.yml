@@ -25,6 +25,7 @@ jobs:
     outputs:
       artifact_name: ${{ steps.artifacts.outputs.artifact_name }}
       version_name: ${{ steps.artifacts.outputs.version_name }}
+      release_signed: ${{ steps.verify.outputs.release_signed }}
 
     steps:
       - name: Check out repository
@@ -82,6 +83,7 @@ jobs:
         run: ./gradlew --no-daemon assembleRelease
 
       - name: Verify APK signature
+        id: verify
         run: |
           apksigner="$ANDROID_HOME/build-tools/37.0.0/apksigner"
           if [ ! -x "$apksigner" ]; then
@@ -90,11 +92,14 @@ jobs:
           apk="app/build/outputs/apk/release/app-release.apk"
           "$apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/apk-certs.txt"
           if grep -q "CN=Android Debug" "$RUNNER_TEMP/apk-certs.txt"; then
+            echo "release_signed=false" >> "$GITHUB_OUTPUT"
             if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
               echo "Tagged release is still signed with the debug keystore"
               exit 1
             fi
             echo "APK is debug-signed (allowed for unsigned PR / missing secrets)"
+          else
+            echo "release_signed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Remove keystore from runner
@@ -130,7 +135,10 @@ jobs:
           retention-days: 30
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      needs.build.outputs.release_signed == 'true' &&
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     needs: build
     runs-on: ubuntu-24.04
     permissions:
@@ -143,18 +151,36 @@ jobs:
           name: ${{ needs.build.outputs.artifact_name }}
           path: dist
 
-      - name: Publish tagged build
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_NAME: ${{ needs.build.outputs.version_name }}
           APK_PATH: dist/Pixel-IMS-5G-Plus-${{ needs.build.outputs.version_name }}.apk
           CHECKSUM_PATH: dist/Pixel-IMS-5G-Plus-${{ needs.build.outputs.version_name }}.apk.sha256
         shell: bash
         run: |
-          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "$APK_PATH" "$CHECKSUM_PATH" \
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v${VERSION_NAME}"
+          fi
+
+          if [[ "$GITHUB_REF" == refs/heads/master ]]; then
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+            fi
+            gh release create "$tag" "$APK_PATH" "$CHECKSUM_PATH" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$tag" \
+              --latest \
+              --notes "Signed APK from ${GITHUB_SHA} on master."
+          elif gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "$APK_PATH" "$CHECKSUM_PATH" \
               --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "$APK_PATH" "$CHECKSUM_PATH" \
+            gh release create "$tag" "$APK_PATH" "$CHECKSUM_PATH" \
               --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
-              --title "$GITHUB_REF_NAME"
+              --title "$tag" --latest
           fi

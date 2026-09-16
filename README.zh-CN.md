@@ -8,6 +8,10 @@
 
 5G+ 已经生效时，打开无线调试也不会再打扰你。室内掉回 LTE 同样不会反复弹窗。
 
+## 下载
+
+签名 APK 在 [Releases](https://github.com/xiaoyueyoqwq/Pixel-ims-5g-plus/releases)。每次推到 `master` 会更新当前版本号对应的 Release。
+
 ## 使用
 
 1. 安装 APK，**重启一次**。
