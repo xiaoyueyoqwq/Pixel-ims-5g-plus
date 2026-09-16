@@ -56,12 +56,19 @@ jobs:
           fi
 
       - name: Decode release keystore
-        if: ${{ secrets.SIGNING_KEYSTORE != '' }}
         env:
           SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
         run: |
+          if [ -z "$SIGNING_KEYSTORE" ]; then
+            echo "SIGNING_KEYSTORE is empty; assembleRelease will use the debug keystore"
+            exit 0
+          fi
           printf '%s' "$SIGNING_KEYSTORE" | base64 -d > "$GITHUB_WORKSPACE/ims-release.jks"
           chmod 600 "$GITHUB_WORKSPACE/ims-release.jks"
+          if [ ! -s "$GITHUB_WORKSPACE/ims-release.jks" ]; then
+            echo "Decoded keystore is empty"
+            exit 1
+          fi
           echo "SIGNING_STORE_FILE=$GITHUB_WORKSPACE/ims-release.jks" >> "$GITHUB_ENV"
 
       - name: Build release APK
