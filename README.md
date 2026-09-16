@@ -17,9 +17,13 @@ If 5G+ is already in effect, turning Wireless debugging on does not prompt again
    - This `Ims` device is already remembered: the notification asks whether to apply the 5G+ patch. Tap Apply.
 4. After a successful apply, a notification confirms the patch. Once you have checked it, you can leave Developer options on or turn them off; that does not affect the patch afterwards.
 
-You only need this flow again if the patch is gone (OTA, a new SIM, and similar). Do not clear app data, or you will have to pair again. If Wireless debugging lists more than one `Ims`, forget the old entries.
-
 Notification permission must be allowed, or pairing / Apply prompts will not show.
+
+## Limitation
+
+The patch is lost after every reboot. That cannot be avoided, so you need to run the apply flow again after each reboot.
+
+The pairing does not have to be repeated: Ims looks at Android’s remembered Wireless debugging devices. If this `Ims` entry is already there, turn Wireless debugging on and confirm Apply in the notification. You do not need to enter the pairing code again. Do not clear app data, or you will have to pair again. If Wireless debugging lists more than one `Ims`, forget the old entries.
 
 ## Inspiration and references
 
