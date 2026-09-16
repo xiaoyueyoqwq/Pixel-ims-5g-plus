@@ -15,6 +15,7 @@ pluginManagement {
         id("com.android.application") version agp
         id("com.android.library") version agp
         id("com.android.settings") version agp
+        id("org.jetbrains.kotlin.android") version "2.2.10"
     }
 }
 
@@ -29,6 +30,7 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

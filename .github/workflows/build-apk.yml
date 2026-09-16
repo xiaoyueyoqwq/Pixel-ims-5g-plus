@@ -45,8 +45,51 @@ jobs:
       - name: Install Android 37 SDK packages
         run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
 
+      - name: Require signing secrets on tags
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+        run: |
+          if [ -z "$SIGNING_KEYSTORE" ]; then
+            echo "SIGNING_KEYSTORE is missing; tagged releases cannot be debug-signed"
+            exit 1
+          fi
+
+      - name: Decode release keystore
+        if: ${{ secrets.SIGNING_KEYSTORE != '' }}
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+        run: |
+          printf '%s' "$SIGNING_KEYSTORE" | base64 -d > "$GITHUB_WORKSPACE/ims-release.jks"
+          chmod 600 "$GITHUB_WORKSPACE/ims-release.jks"
+          echo "SIGNING_STORE_FILE=$GITHUB_WORKSPACE/ims-release.jks" >> "$GITHUB_ENV"
+
       - name: Build release APK
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
+
+      - name: Verify APK signature
+        run: |
+          apksigner="$ANDROID_HOME/build-tools/37.0.0/apksigner"
+          if [ ! -x "$apksigner" ]; then
+            apksigner="$ANDROID_SDK_ROOT/build-tools/37.0.0/apksigner"
+          fi
+          apk="app/build/outputs/apk/release/app-release.apk"
+          "$apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/apk-certs.txt"
+          if grep -q "CN=Android Debug" "$RUNNER_TEMP/apk-certs.txt"; then
+            if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              echo "Tagged release is still signed with the debug keystore"
+              exit 1
+            fi
+            echo "APK is debug-signed (allowed for unsigned PR / missing secrets)"
+          fi
+
+      - name: Remove keystore from runner
+        if: always()
+        run: rm -f "$GITHUB_WORKSPACE/ims-release.jks"
 
       - name: Prepare artifacts
         id: artifacts

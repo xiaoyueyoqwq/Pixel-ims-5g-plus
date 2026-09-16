@@ -1,28 +1,43 @@
 # Pixel IMS 5G+
 
-Minimal Pixel IMS patch build with `5G+ / NR_ADVANCED` icon support for domestic Sub-6 bands.
+[中文说明](README.zh-CN.md)
 
-## Base
+Adds the **5G+ / NR_ADVANCED** icon and IMS-related carrier switches on Pixel phones for domestic Sub-6.
 
-- Base project: `vvb2060/Ims`
-- Upstream: https://github.com/vvb2060/Ims
+**Shizuku is not required. Root is not required.** Privilege comes from the system Wireless debugging setting: pair once on loopback, then write carrier config. There is no launcher icon; the app looks like a system component.
 
-## 5G+ Patch Attribution
+If 5G+ is already in effect, turning Wireless debugging on does not prompt again. Falling back to LTE indoors also does not.
 
-- The `5G+` carrier-config patch in this fork is adapted from the 5G+ work published in `ryfineZ/carrier-ims-for-pixel`.
-- Patch source / attribution: https://github.com/ryfineZ/carrier-ims-for-pixel
+## Usage
 
-This fork keeps the `vvb2060/Ims` base and adds the minimal carrier-config changes needed to expose `5G+` behavior on supported domestic Sub-6 NR bands.
+1. Install the APK, then **reboot once**.
+2. Enable Developer options → **Wireless debugging** (USB debugging alone is not enough).
+3. Follow the notification:
+   - Not paired yet: open the system “Pair with device” page. A notification input appears; type the 6-digit pairing code.
+   - This `Ims` device is already remembered: the notification asks whether to apply the 5G+ patch. Tap Apply.
+4. After a successful apply, the release build turns Wireless debugging and USB debugging off (and Developer options, when the system allows it). The waiting notification goes away.
 
-## What Changed
+You only need this flow again if the patch is gone (OTA, a new SIM, and similar). Do not clear app data, or you will have to pair again. If Wireless debugging lists more than one `Ims`, forget the old entries.
 
-- Added `5g_icon_configuration_string`
-- Added `nr_advanced_threshold_bandwidth_khz_int`
-- Added `additional_nr_advanced_bands_int_array`
-- Added `nr_advanced_capable_pco_id_int`
-- Added `include_lte_for_nr_advanced_threshold_bandwidth_bool`
+Notification permission must be allowed, or pairing / Apply prompts will not show.
 
-## Notes
+## Inspiration and references
 
-- This repo is intended as a minimal fork, not a full carry-over of the `ryfineZ` app-side feature set.
-- All credit for the original base and the original 5G+ patch idea remains with their respective upstream authors.
+This repository is a fork, not an IMS tool written from scratch. Credit belongs with the original authors:
+
+| Source | Contribution |
+|---|---|
+| [vvb2060/Ims](https://github.com/vvb2060/Ims) | Base project: IMS / carrier-config overrides via instrumentation |
+| [TakaiSaisei/pixel_ims](https://github.com/TakaiSaisei/pixel_ims) | Wireless-debugging privilege path that removes the Shizuku dependency; portions of that implementation |
+| [ryfineZ/carrier-ims-for-pixel](https://github.com/ryfineZ/carrier-ims-for-pixel) | 5G+ carrier-config keys (icon, bandwidth threshold, NR bands) |
+| [FlyfishXu/kadb](https://github.com/FlyfishXu/kadb) | Loopback Wireless debugging TLS pairing and connection |
+
+## What the patch writes
+
+- `5g_icon_configuration_string`
+- `nr_advanced_threshold_bandwidth_khz_int`
+- `additional_nr_advanced_bands_int_array`
+- `nr_advanced_capable_pco_id_int`
+- `include_lte_for_nr_advanced_threshold_bandwidth_bool`
+
+plus the original vvb2060/Ims VoLTE / VoNR / VoWiFi / VT / UT overrides.

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ims</string>
+
+    <string name="prompt_title">IMS carrier config</string>
+    <string name="prompt_checking">Checking wireless debugging…</string>
+    <string name="prompt_authorized">Wireless debugging is paired. Apply the 5G+ IMS patch?</string>
+    <string name="prompt_need_pair">Enter the 6-digit wireless debugging pairing code.</string>
+    <string name="prompt_need_code">Pairing code is required.</string>
+    <string name="prompt_working">Applying…</string>
+    <string name="prompt_failed">Failed: %1$s</string>
+    <string name="prompt_code_hint">Pairing code</string>
+    <string name="prompt_pair">Pair and apply</string>
+    <string name="prompt_apply">Apply patch</string>
+    <string name="prompt_dismiss">Not now</string>
+
+    <string name="notif_channel_prompt_name">IMS patch prompt</string>
+    <string name="notif_channel_prompt_desc">Asks whether to apply the IMS 5G+ patch</string>
+    <string name="notif_channel_status_name">IMS patch result</string>
+    <string name="notif_channel_status_desc">Result of applying the IMS 5G+ patch</string>
+    <string name="notif_channel_fgs_name">IMS setup</string>
+    <string name="notif_channel_fgs_desc">Silent status while waiting for Wireless debugging to apply the 5G+ patch</string>
+
+    <string name="notif_apply_title">IMS patch not applied</string>
+    <string name="notif_apply_text">5G+ carrier config is missing. Apply the patch?</string>
+    <string name="notif_apply_yes">Apply</string>
+    <string name="notif_apply_no">Dismiss</string>
+
+    <string name="notif_pairing_title">Wireless debugging pairing</string>
+    <string name="notif_pairing_text">Tap “Enter pairing code” and type the 6-digit code</string>
+    <string name="notif_pairing_reply_label">6-digit pairing code</string>
+    <string name="notif_pairing_action">Enter pairing code</string>
+    <string name="notif_working_title">IMS pairing</string>
+
+    <string name="notif_fgs_title">IMS setup needed</string>
+    <string name="notif_fgs_text">Tap to pair wireless debugging and apply the 5G+ patch</string>
+    <string name="notif_watch_title">Waiting for Wireless debugging</string>
+    <string name="notif_watch_text">Will apply the 5G+ patch once Wireless debugging is available</string>
+
+    <string name="notif_result_ok_title">IMS patch applied</string>
+    <string name="notif_result_ok_text">Wireless debugging has been turned off.</string>
+    <string name="notif_result_ok_text_debug">The 5G+ carrier config was written. Debugging stays on in this debug build.</string>
+    <string name="notif_result_fail_title">IMS patch failed</string>
+    <string name="notif_result_fail_text">The 5G+ carrier config was not written.</string>
+</resources>
