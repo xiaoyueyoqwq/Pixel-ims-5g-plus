@@ -38,8 +38,7 @@
     <string name="notif_watch_text">Will apply the 5G+ patch once Wireless debugging is available</string>
 
     <string name="notif_result_ok_title">IMS patch applied</string>
-    <string name="notif_result_ok_text">Wireless debugging has been turned off.</string>
-    <string name="notif_result_ok_text_debug">The 5G+ carrier config was written. Debugging stays on in this debug build.</string>
+    <string name="notif_result_ok_text">The 5G+ carrier config was written.</string>
     <string name="notif_result_fail_title">IMS patch failed</string>
     <string name="notif_result_fail_text">The 5G+ carrier config was not written.</string>
 </resources>

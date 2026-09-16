@@ -12,7 +12,6 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
-import io.github.xiaoyueyoqwq.ims.BuildConfig
 import io.github.xiaoyueyoqwq.ims.PatchPromptReceiver
 import io.github.xiaoyueyoqwq.ims.R
 
@@ -155,11 +154,7 @@ class NotificationController(context: Context) {
             if (success) R.string.notif_result_ok_title else R.string.notif_result_fail_title,
         )
         val text = detail ?: appContext.getString(
-            when {
-                success && BuildConfig.DEBUG -> R.string.notif_result_ok_text_debug
-                success -> R.string.notif_result_ok_text
-                else -> R.string.notif_result_fail_text
-            },
+            if (success) R.string.notif_result_ok_text else R.string.notif_result_fail_text,
         )
         val notification = NotificationCompat.Builder(appContext, CHANNEL_STATUS)
             .setSmallIcon(android.R.drawable.ic_dialog_info)

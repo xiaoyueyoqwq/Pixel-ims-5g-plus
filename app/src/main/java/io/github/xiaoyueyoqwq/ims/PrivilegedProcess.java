@@ -6,7 +6,6 @@ import android.app.UiAutomation;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.PersistableBundle;
-import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -57,11 +56,6 @@ public class PrivilegedProcess extends Instrumentation {
                     if (overrideConfig(context)) {
                         showVoLTE(context);
                         resetIms(context);
-                        if (BuildConfig.DEBUG) {
-                            Log.i(TAG, "Skipping lockdown in debug so USB adb stays connected");
-                        } else {
-                            lockdownDebugging(context);
-                        }
                     }
                 } finally {
                     try {
@@ -208,29 +202,6 @@ public class PrivilegedProcess extends Instrumentation {
             }
         } catch (Exception e) {
             Log.e(TAG, "resetIms failed", e);
-        }
-    }
-
-    /**
-     * Only called after a successful override. Turns wireless/USB debugging off and tries to hide
-     * developer options. Failures are logged and ignored.
-     */
-    private static void lockdownDebugging(Context context) {
-        var resolver = context.getContentResolver();
-        putGlobal(resolver, "adb_wifi_enabled", 0);
-        putGlobal(resolver, "adb_enabled", 0);
-        putGlobal(resolver, "development_settings_enabled", 0);
-    }
-
-    private static void putGlobal(android.content.ContentResolver resolver, String key, int value) {
-        try {
-            if (!Settings.Global.putInt(resolver, key, value)) {
-                Log.w(TAG, "Settings.Global.putInt returned false for " + key);
-            } else {
-                Log.i(TAG, "Set " + key + "=" + value);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to write " + key, e);
         }
     }
 
