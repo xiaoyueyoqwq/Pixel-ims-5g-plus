@@ -22,7 +22,9 @@ class WirelessAdbJobService : JobService() {
             } catch (e: Exception) {
                 Log.e(TAG, "watch failed", e)
             } finally {
-                WirelessAdbWatcher.schedule(this@WirelessAdbJobService)
+                if (params.jobId == WirelessAdbWatcher.JOB_ID_WATCH) {
+                    WirelessAdbWatcher.schedule(this@WirelessAdbJobService)
+                }
                 jobFinished(params, false)
             }
         }

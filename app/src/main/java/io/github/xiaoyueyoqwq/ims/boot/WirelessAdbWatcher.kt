@@ -17,8 +17,11 @@ import io.github.xiaoyueyoqwq.ims.system.WirelessDebugging
 object WirelessAdbWatcher {
     const val JOB_ID_WATCH = 2060
     const val JOB_ID_IMMEDIATE = 2061
+    const val JOB_ID_STATUS = 2062
 
     private const val TAG = "WirelessAdbWatch"
+    // JobScheduler periodic floor. Cheap: read three CarrierConfig keys, no FGS.
+    private const val STATUS_PERIOD_MS = 15 * 60 * 1000L
 
     @Volatile
     private var observing = false
@@ -26,6 +29,7 @@ object WirelessAdbWatcher {
     fun start(context: Context) {
         val app = context.applicationContext
         schedule(app)
+        scheduleStatus(app)
         observe(app)
     }
 
@@ -43,6 +47,22 @@ object WirelessAdbWatcher {
             .setPriority(JobInfo.PRIORITY_HIGH)
             .build()
         scheduler.schedule(watch)
+    }
+
+    fun scheduleStatus(context: Context) {
+        val app = context.applicationContext
+        val scheduler = app.getSystemService(JobScheduler::class.java) ?: return
+        if (scheduler.getPendingJob(JOB_ID_STATUS) != null) return
+        val status = JobInfo.Builder(
+            JOB_ID_STATUS,
+            ComponentName(app, WirelessAdbJobService::class.java),
+        )
+            .setPeriodic(STATUS_PERIOD_MS)
+            .setPersisted(true)
+            .setPriority(JobInfo.PRIORITY_DEFAULT)
+            .build()
+        scheduler.schedule(status)
+        Log.i(TAG, "scheduled 5G+ status job every ${STATUS_PERIOD_MS}ms")
     }
 
     private fun observe(app: Context) {

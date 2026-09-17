@@ -27,6 +27,10 @@ Notification permission must be allowed, or pairing / Apply prompts will not sho
 
 The patch is lost after every reboot. That cannot be avoided, so you need to run the apply flow again after each reboot.
 
+Opening **Phone Information V2** (`*#*#4636#*#*`, the new radio test page — V1 is the old one) can also clear the override. The system test UI is allowed to call `overrideConfig(..., null)` and restore the carrier XML. Ims cannot block that.
+
+When the patch is gone for either reason, Ims does not wait for another reboot. It re-reads the 5G+ keys on carrier-config changes and on a low-power 15-minute job. If the keys are missing, the same boot-time notification comes back: turn Wireless debugging on and confirm Apply.
+
 The pairing does not have to be repeated: Ims looks at Android’s remembered Wireless debugging devices. If this `Ims` entry is already there, turn Wireless debugging on and confirm Apply in the notification. You do not need to enter the pairing code again. Do not clear app data, or you will have to pair again. If Wireless debugging lists more than one `Ims`, forget the old entries.
 
 ## Inspiration and references
